@@ -1,0 +1,9 @@
+{
+  "name": "dat-replication-stream",
+  "version": "0.0.0",
+  "repository": "mafintosh/dat-replication-stream",
+  "description": "dat replication as a stream",
+  "dependencies": {
+    "varint": "^1.2.0"
+  }
+}
