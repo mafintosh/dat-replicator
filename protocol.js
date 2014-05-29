@@ -29,7 +29,7 @@ var Protocol = function() {
   this._stream = null
 
   this._headerPointer = 0
-  this._header = new Buffer(50)
+  this._headerBuffer = new Buffer(50)
   this._ondrain = null
 
   this._cb = null
@@ -55,7 +55,7 @@ Protocol.prototype._write = function(data, enc, cb) {
   for (var i = 0; i < data.length; i++) {
     if (!(data[i] & 0x80)) this._msbs--
 
-    this._header[this._headerPointer++] = data[i]
+    this._headerBuffer[this._headerPointer++] = data[i]
     if (this._msbs) continue
 
     this._onheader()
@@ -94,8 +94,8 @@ Protocol.prototype._onheader = function() {
   this._headerPointer = 0
   this._msbs = 2
 
-  this._type = varint.decode(this._header)
-  this._missing = varint.decode(this._header, varint.decode.bytesRead)
+  this._type = varint.decode(this._headerBuffer)
+  this._missing = varint.decode(this._headerBuffer, varint.decode.bytesRead)
 
   switch (this._type) {
     case 0:
