@@ -1,10 +1,31 @@
 {
-  "name": "dat-replication-stream",
+  "name": "dat-replicator",
   "version": "0.0.0",
-  "repository": "mafintosh/dat-replication-stream",
-  "description": "dat replication as a stream",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/mafintosh/dat-replicator"
+  },
+  "description": "Replicate dat using streams",
   "dependencies": {
     "dat-replication-protocol": "^0.1.1",
     "through2": "^0.4.2"
-  }
+  },
+  "bugs": {
+    "url": "https://github.com/mafintosh/dat-replicator/issues"
+  },
+  "homepage": "https://github.com/mafintosh/dat-replicator",
+  "main": "index.js",
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "dat",
+    "replication",
+    "replicator",
+    "sync",
+    "streams"
+  ],
+  "author": "Mathias Buus",
+  "license": "MIT"
 }
