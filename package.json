@@ -4,6 +4,7 @@
   "repository": "mafintosh/dat-replication-stream",
   "description": "dat replication as a stream",
   "dependencies": {
-    "varint": "^1.2.0"
+    "dat-replication-protocol": "^0.1.1",
+    "through2": "^0.4.2"
   }
 }
