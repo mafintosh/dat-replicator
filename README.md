@@ -48,6 +48,20 @@ socket.pipe(r.send()).pipe(socket)
 Thats it! All of the changes that `datSend` have and that `datReceive` doesn't will
 be inserted into `datReceive`.
 
+## Metadata
+
+Per default metadata (the change count etc) is exchanged over the stream as well.
+If for some reason you already have this do
+
+``` js
+var send = r1.send({meta:{change:100}})
+var rcvd = r2.receive({meta:false})
+
+send.pipe(rcvd).pipe(send)
+```
+
+This will disable the metadata exchange
+
 ## License
 
 MIT

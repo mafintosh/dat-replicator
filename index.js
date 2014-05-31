@@ -6,7 +6,9 @@ var STREAM_OPTS = {highWaterMark:16}
 var replication = function(dat) {
   var that = {}
 
-  that.createPushStream = that.send = function() {
+  that.createPushStream = that.send = function(opts) {
+    if (!opts) opts = {}
+
     var p = protocol()
 
     var writeAttachments = function(attachments, cb) {
@@ -43,22 +45,29 @@ var replication = function(dat) {
       rs.pipe(through.obj(STREAM_OPTS, write, flush))
     }
 
-    p.on('meta', function(meta, cb) {
-      ready(meta)
-      cb()
-    })
+    if (opts.meta) ready(opts.meta)
+    else {
+      p.once('meta', function(meta, cb) {
+        ready(meta)
+        cb()
+      })
+    }
 
     return p
   }
 
-  that.createPullStream = that.receive = function() {
+  that.createPullStream = that.receive = function(opts) {
+    if (!opts) opts = {}
+
     var p = protocol()
     var ws = dat.createWriteStream({objects:true})
 
-    p.meta({
-      change: dat.storage.change,
-      schema: dat.schema.toJSON()
-    })
+    if (opts.meta !== false) {
+      p.meta({
+        change: dat.storage.change,
+        schema: dat.schema.toJSON()
+      })
+    }
 
     p.on('blob', function(blob, cb) {
       blob.pipe(dat.blobs.createWriteStream(cb))
