@@ -52,6 +52,8 @@ var replication = function(dat) {
       })
     }
 
+    if (opts.ping !== false) p.ping() // support more transports by forcing a flush (looking at you http!)
+
     return p
   }
 
