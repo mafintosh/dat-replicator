@@ -8,7 +8,6 @@ var replication = function(dat) {
 
   that.createPushStream = that.send = function(opts) {
     if (!opts) opts = {}
-
     var p = protocol()
 
     var writeAttachments = function(attachments, cb) {
@@ -68,6 +67,11 @@ var replication = function(dat) {
         schema: dat.schema.toJSON()
       })
     }
+
+    ws.on('error', function(err) {
+      if (err.conflict) p.warn({conflict:true, message:err.message}) // would be cool to have key as well...
+      else p.warn({error:true, message:err.message})
+    })
 
     p.on('blob', function(blob, cb) {
       blob.pipe(dat.blobs.createWriteStream(cb))
