@@ -1,12 +1,41 @@
 var protocol = require('dat-replication-protocol')
 var through = require('through2')
+var request = require('request')
 
 var STREAM_OPTS = {highWaterMark:16}
+
+var progressStream = function(p) {
+  var progress = through.obj()
+  p.on('transfer', function(type) {
+    if (type === 'protobuf' || type === 'document') progress.write({type:type})
+  })
+  p.on('error', function(err) {
+    progress.emit('error', err)
+  })
+  p.on('end', function() {
+    progress.end()
+  })
+  return progress
+}
 
 var replication = function(dat) {
   var that = {}
 
-  that.createPushStream = that.send = function(opts) {
+  that.createPullStream = function(remote) {
+    var rcvd = that.receive()
+    var req = request.post(remote+'/api/replicator/send')
+    req.pipe(rcvd).pipe(req)
+    return progressStream(rcvd)
+  }
+
+  that.createPushStream = function(remote) {
+    var send = that.send()
+    var req = request.post(remote+'/api/replicator/receive')
+    req.pipe(send).pipe(req)
+    return progressStream(send)
+  }
+
+  that.send = function(opts) {
     if (!opts) opts = {}
     var p = protocol()
 
@@ -52,12 +81,22 @@ var replication = function(dat) {
       })
     }
 
-    if (opts.ping !== false) p.ping() // support more transports by forcing a flush (looking at you http!)
+    if (opts.ping !== false) p.ping() // support more transports by forcing a flush (looking at you http)
+
+    // not sure about this but this is a start...
+    p.on('conflict', function(conflict, cb) {
+      var err = new Error(conflict.message || 'conflict')
+      err.conflict = true
+      err.key = conflict.key
+      err.version = conflict.version
+      p.emit('error', err)
+      cb()
+    })
 
     return p
   }
 
-  that.createPullStream = that.receive = function(opts) {
+  that.receive = function(opts) {
     if (!opts) opts = {}
 
     var p = protocol()
@@ -71,8 +110,12 @@ var replication = function(dat) {
     }
 
     ws.on('error', function(err) {
-      if (err.conflict) p.warn({conflict:true, message:err.message}) // would be cool to have key as well...
-      else p.warn({error:true, message:err.message})
+      if (err.conflict) return p.conflict({message:err.message, key:err.key, version:err.version})
+      p.emit('error', err)
+    })
+
+    ws.on('end', function() {
+      p.finalize()
     })
 
     p.on('blob', function(blob, cb) {
@@ -84,9 +127,7 @@ var replication = function(dat) {
     })
 
     p.on('finish', function() {
-      ws.end(function() {
-        p.finalize()
-      })
+      ws.end()
     })
 
     return p
