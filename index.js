@@ -60,8 +60,7 @@ var replication = function(dat) {
     }
 
     var flush = function(cb) {
-      p.finalize()
-      cb()
+      p.finalize(cb)
     }
 
     var ready = function(meta) {
@@ -114,10 +113,6 @@ var replication = function(dat) {
       p.emit('error', err)
     })
 
-    ws.on('end', function() {
-      p.finalize()
-    })
-
     p.on('blob', function(blob, cb) {
       blob.pipe(dat.blobs.createWriteStream(cb))
     })
@@ -126,7 +121,8 @@ var replication = function(dat) {
       ws.write(doc, cb)
     })
 
-    p.on('finish', function() {
+    p.on('finalize', function(cb) {
+      ws.on('end', cb)
       ws.end()
     })
 

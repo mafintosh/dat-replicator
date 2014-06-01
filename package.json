@@ -7,7 +7,7 @@
   },
   "description": "Replicate dat using streams",
   "dependencies": {
-    "dat-replication-protocol": "^1.0.0",
+    "dat-replication-protocol": "^1.1.0",
     "through2": "^0.4.2"
   },
   "bugs": {
