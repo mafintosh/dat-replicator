@@ -43,10 +43,11 @@ var replication = function(dat) {
       if (!attachments) return cb()
 
       var keys = Object.keys(attachments)
-      var loop = function() {
+      var loop = function(err) {
+        if (err) return cb(err)
         if (!keys.length) return cb()
         var bl = attachments[keys.shift()]
-        dat.blobs.createReadStream(bl.hash).pipe(p.blob(bl.size, cb))
+        dat.blobs.createReadStream(bl.hash).pipe(p.blob(bl.size, loop))
       }
 
       loop()
