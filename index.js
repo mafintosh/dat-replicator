@@ -4,20 +4,6 @@ var request = require('request')
 
 var STREAM_OPTS = {highWaterMark:16}
 
-var progressStream = function(p) {
-  var progress = through.obj()
-  p.on('transfer', function(type) {
-    if (type === 'protobuf' || type === 'document') progress.write({type:type})
-  })
-  p.on('error', function(err) {
-    progress.emit('error', err)
-  })
-  p.on('end', function() {
-    progress.end()
-  })
-  return progress
-}
-
 var replication = function(dat) {
   var that = {}
 
@@ -25,14 +11,14 @@ var replication = function(dat) {
     var rcvd = that.receive()
     var req = request.post(remote+'/api/replicator/send')
     req.pipe(rcvd).pipe(req)
-    return progressStream(rcvd)
+    return rcvd
   }
 
   that.createPushStream = function(remote) {
     var send = that.send()
     var req = request.post(remote+'/api/replicator/receive')
     req.pipe(send).pipe(req)
-    return progressStream(send)
+    return send
   }
 
   that.send = function(opts) {
