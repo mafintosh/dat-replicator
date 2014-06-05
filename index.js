@@ -96,8 +96,11 @@ var replication = function(dat) {
     }
 
     ws.on('error', function(err) {
-      if (err.conflict) return p.conflict({message:err.message, key:err.key, version:err.version})
       p.emit('error', err)
+    })
+    
+    ws.on('conflict', function(err) {
+      p.conflict({message:err.message, key:err.key, version:err.version})
     })
 
     p.on('blob', function(blob, cb) {
