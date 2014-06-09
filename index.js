@@ -42,7 +42,7 @@ var replication = function(dat) {
     var write = function(doc, enc, cb) {
       writeAttachments(doc.data.attachments, function(err) {
         if (err) return cb(err)
-        p.document(doc.data, cb)
+        p.document(doc.value || doc.data, cb)
       })
     }
 
