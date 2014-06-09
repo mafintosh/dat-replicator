@@ -40,9 +40,10 @@ var replication = function(dat) {
     }
 
     var write = function(doc, enc, cb) {
-      writeAttachments(doc.data.attachments, function(err) {
+      var data = doc.value || doc.data
+      writeAttachments(data.attachments, function(err) {
         if (err) return cb(err)
-        p.document(doc.value || doc.data, cb)
+        p.document(data, cb)
       })
     }
 
