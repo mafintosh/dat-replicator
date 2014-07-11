@@ -39,6 +39,11 @@ var replication = function(dat) {
       loop()
     }
 
+    var writeNoBlobs = function(doc, enc, cb) {
+      var data = doc.value || doc.data
+      p.document(data, cb)
+    }
+
     var write = function(doc, enc, cb) {
       var data = doc.value || doc.data
       writeAttachments(data.attachments, function(err) {
@@ -57,7 +62,7 @@ var replication = function(dat) {
         data: true
       })
 
-      rs.pipe(through.obj(STREAM_OPTS, write, flush))
+      rs.pipe(through.obj(STREAM_OPTS, meta.blobs === false ? writeNoBlobs : write, flush))
     }
 
     if (opts.meta) ready(opts.meta)
@@ -91,6 +96,7 @@ var replication = function(dat) {
 
     if (opts.meta !== false) {
       p.meta({
+        blobs: opts.blobs,
         change: dat.storage.change,
         schema: dat.schema.toJSON()
       })
