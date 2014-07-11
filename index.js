@@ -7,15 +7,15 @@ var STREAM_OPTS = {highWaterMark:16}
 var replication = function(dat) {
   var that = {}
 
-  that.createPullStream = function(remote) {
-    var rcvd = that.receive()
+  that.createPullStream = function(remote, opts) {
+    var rcvd = that.receive(opts)
     var req = request.post(remote+'/api/replicator/send')
     req.pipe(rcvd).pipe(req)
     return rcvd
   }
 
-  that.createPushStream = function(remote) {
-    var send = that.send()
+  that.createPushStream = function(remote, opts) {
+    var send = that.send(opts)
     var req = request.post(remote+'/api/replicator/receive')
     req.pipe(send).pipe(req)
     return send
