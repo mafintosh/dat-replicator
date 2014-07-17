@@ -3,8 +3,6 @@ var through = require('through2')
 var request = require('request')
 var debug = require('debug')('dat-replicator')
 
-var STREAM_OPTS = {highWaterMark:16}
-
 var replication = function(dat) {
   var that = {}
 
@@ -68,7 +66,7 @@ var replication = function(dat) {
       })
 
       debug('receive.meta', meta)
-      rs.pipe(through.obj(STREAM_OPTS, meta.blobs === false ? writeNoBlobs : write, flush))
+      rs.pipe(through.obj(meta.blobs === false ? writeNoBlobs : write, flush))
     }
 
     if (opts.meta) ready(opts.meta)

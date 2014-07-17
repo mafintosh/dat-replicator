@@ -10,7 +10,7 @@
     "dat-replication-protocol": "^2.0.0",
     "debug": "^1.0.4",
     "request": "^2.36.0",
-    "through2": "^0.4.2"
+    "through2": "^0.5.1"
   },
   "bugs": {
     "url": "https://github.com/mafintosh/dat-replicator/issues"
