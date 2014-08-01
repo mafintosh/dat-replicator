@@ -47,7 +47,7 @@ var replication = function(dat) {
 
     var write = function(doc, enc, cb) {
       var data = doc.value || doc.data
-      writeAttachments(data.attachments, function(err) {
+      writeAttachments(data[opts.blobKey || 'blobs'], function(err) {
         if (err) return cb(err)
         debug('send.document', data)
         p.document(data, cb)
