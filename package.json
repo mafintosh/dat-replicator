@@ -1,6 +1,6 @@
 {
   "name": "dat-replicator",
-  "version": "0.7.2",
+  "version": "1.0.0",
   "repository": {
     "type": "git",
     "url": "git://github.com/mafintosh/dat-replicator"
