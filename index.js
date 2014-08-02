@@ -47,6 +47,7 @@ module.exports = function(db, store) {
     var p = protocol()
 
     var writeBlobs = function(data, enc, cb) {
+      if (opts.blobs === false) return cb(null, data)
       if (data.subset !== 'blobs') return cb(null, data)
 
       var metadata = JSON.parse(data.value.toString())
