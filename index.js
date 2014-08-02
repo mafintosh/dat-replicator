@@ -51,12 +51,18 @@ module.exports = function(db, store) {
       if (data.subset !== 'blobs') return cb(null, data)
 
       var metadata = JSON.parse(data.value.toString())
-      var last = metadata[metadata.length-1]
-      var bl = store.createReadStream(last.hash)
+      if (!metadata.from) metadata = metadata.slice(-1)
 
-      pump(bl, p.createBlobStream(last.length)).on('finish', function() {
-        cb(null, data)
-      })
+      var loop = function() {
+        if (!metadata.length) return cb(null, data)
+
+        var next = metadata.shift()
+        var bl = store.createReadStream(next.hash)
+
+        pump(bl, p.createBlobStream(next.size)).on('finish', loop)
+      }
+
+      loop()
     }
 
     pump(
