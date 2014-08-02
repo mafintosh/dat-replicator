@@ -9,6 +9,7 @@
   "dependencies": {
     "dat-replication-protocol": "^3.0.1",
     "debug": "^1.0.4",
+    "pump": "^0.3.5",
     "request": "^2.36.0",
     "through2": "^0.5.1"
   },
