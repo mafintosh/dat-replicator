@@ -51,7 +51,7 @@ module.exports = function(db, store) {
       if (data.subset !== 'blobs') return cb(null, data)
 
       var metadata = JSON.parse(data.value.toString())
-      if (!metadata.from) metadata = metadata.slice(-1)
+      if (!data.from) metadata = metadata.slice(-1)
 
       var loop = function() {
         if (!metadata.length) return cb(null, data)
