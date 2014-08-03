@@ -65,10 +65,14 @@ module.exports = function(db, store) {
       loop()
     }
 
+    var finalize = function() {
+      p.finalize()
+    }
+
     pump(
       db.createChangesReadStream({since:opts.since, valueEncoding:'binary', data:true}),
       through.obj(writeBlobs),
-      p.createChangesStream()
+      p.createChangesStream().on('finish', finalize)
     )
 
     return p
