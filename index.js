@@ -30,6 +30,43 @@ module.exports = function(db, store) {
     })
   }
 
+  that.createPullStream = function(remote, opts) {
+    if (!opts) opts = {}
+
+    var rcvd = that.receive(opts)
+    var get = request(remote+'/api/changes', {
+      qs: {
+        blobs: opts.blobs !== false,
+        since: opts.since || 0,
+        type: 'binary'
+      }
+    })
+
+    return pump(get, rcvd)
+  }
+
+  that.createPushStream = function(remote, opts) {
+    if (!opts) opts = {}
+
+    var send = that.send(opts)
+    var post = request.post(remote+'/api/changes', {
+      qs: {
+        type: 'binary'
+      }
+    })
+
+    post.on('response', function(res) {
+      if (!/2\d\d/.test(res.statusCode)) return
+      res.resume()
+      res.on('end', function() {
+        send.destroy(new Error('Remote rejected push'))
+      })
+    })
+
+    pump(send, post)
+    return send
+  }
+
   that.receive = function() {
     var decode = protocol.decode()
     var changes = db.createChangesWriteStream({valueEncoding:'binary'})
