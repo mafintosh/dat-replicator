@@ -8,74 +8,58 @@ module.exports = function(db, store) {
   var that = {}
 
   that.receive = function() {
-    var blobs = 0
-    var next = noop
+    var decode = protocol.decode()
+    var changes = db.createChangesWriteStream({valueEncoding:'binary'})
 
-    var onblob = function(stream) {
-      blobs++
-      pump(stream, store.createWriteStream(), function() {
-        if (--blobs) return
-        next()
-        next = noop
-      })
-    }
-
-    var ondrain = function(cb) {
-      if (!blobs) cb()
-      else next = cb
-    }
-
-    var readBlobs = function(data, enc, cb) {
-      ondrain(function() {
-        cb(null, data)
-      })
-    }
-
-    var onchanges = function(stream) {
-      pump(stream, through.obj(readBlobs), db.createChangesWriteStream({valueEncoding:'binary'}))
-    }
-
-    return protocol(function(type, stream) {
-      if (type === protocol.CHANGES) onchanges(stream)
-      if (type === protocol.BLOB) onblob(stream)
+    decode.blob(function(stream, cb) {
+      pump(stream, store.createWriteStream(), cb)
     })
+
+    decode.change(function(change, cb) {
+      changes.write(change, cb)
+    })
+
+    decode.finalize(function(cb) {
+      changes.end(cb)
+    })
+
+    return decode
   }
 
   that.send = function(opts) {
     if (!opts) opts = {}
 
-    var p = protocol()
+    var encode = protocol.encode()
+    var changes = db.createChangesReadStream({since:opts.since, valueEncoding:'binary', data:true})
+    var flushed = false
 
-    var writeBlobs = function(data, enc, cb) {
-      if (opts.blobs === false) return cb(null, data)
-      if (data.subset !== 'blobs') return cb(null, data)
+    var onchange = function(change, enc, cb) {
+      if (opts.blobs === false || change.subset !== 'blobs') return encode.change(change, cb)
 
       var metadata = JSON.parse(data.value.toString())
       if (!data.from) metadata = metadata.slice(-1)
 
       var loop = function() {
-        if (!metadata.length) return cb(null, data)
+        if (!metadata.length) return encode.change(change, cb)
 
         var next = metadata.shift()
-        var bl = store.createReadStream(next.hash)
-
-        pump(bl, p.createBlobStream(next.size)).on('finish', loop)
+        pump(store.createReadStream(next.hash), encode.blob(next.size, loop))
       }
 
       loop()
     }
 
-    var finalize = function() {
-      p.finalize()
+    var onflush = function() {
+      flushed = true
+      encode.finalize()
     }
 
-    pump(
-      db.createChangesReadStream({since:opts.since, valueEncoding:'binary', data:true}),
-      through.obj(writeBlobs),
-      p.createChangesStream().on('finish', finalize)
-    )
+    changes.pipe(through.obj(onchange, onflush))
+    encode.on('close', function() {
+      if (!flushed) changes.destroy()
+    })
 
-    return p
+    return encode
   }
 
   return that
