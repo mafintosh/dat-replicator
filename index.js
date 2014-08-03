@@ -7,6 +7,29 @@ var noop = function() {}
 module.exports = function(db, store) {
   var that = {}
 
+  var blobs = db.subset('blobs')
+
+  var diff = function(change, cb) {
+    var latest = JSON.parse(change.value.toString())
+    var from = change.from
+
+    if (!from) return cb(null, latest)
+
+    blobs.get(key, {version:from, valueEncoding:'json'}, function(err, prev) {
+      if (err && err.notFound) return cb(null, latest)
+      if (err) return cb(err)
+
+      latest = latest.filter(function(bl) {
+        for (var i = 0; i < prev.length; i++) {
+          if (prev[i].hash === bl.hash) return false
+        }
+        return true
+      })
+
+      cb(null, latest)
+    })
+  }
+
   that.receive = function() {
     var decode = protocol.decode()
     var changes = db.createChangesWriteStream({valueEncoding:'binary'})
@@ -36,17 +59,17 @@ module.exports = function(db, store) {
     var onchange = function(change, enc, cb) {
       if (opts.blobs === false || change.subset !== 'blobs') return encode.change(change, cb)
 
-      var metadata = JSON.parse(change.value.toString())
-      if (!change.from) metadata = metadata.slice(-1)
+      diff(change, function(err, blobs) {
+        if (err) return cb(err)
 
-      var loop = function() {
-        if (!metadata.length) return encode.change(change, cb)
+        var loop = function() {
+          if (!blobs.length) return encode.change(change, cb)
+          var next = blobs.shift()
+          pump(store.createReadStream(next.hash), encode.blob(next.size, loop))
+        }
 
-        var next = metadata.shift()
-        pump(store.createReadStream(next.hash), encode.blob(next.size, loop))
-      }
-
-      loop()
+        loop()
+      })
     }
 
     var onflush = function() {
