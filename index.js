@@ -36,8 +36,8 @@ module.exports = function(db, store) {
     var onchange = function(change, enc, cb) {
       if (opts.blobs === false || change.subset !== 'blobs') return encode.change(change, cb)
 
-      var metadata = JSON.parse(data.value.toString())
-      if (!data.from) metadata = metadata.slice(-1)
+      var metadata = JSON.parse(change.value.toString())
+      if (!change.from) metadata = metadata.slice(-1)
 
       var loop = function() {
         if (!metadata.length) return encode.change(change, cb)
