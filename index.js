@@ -2,6 +2,7 @@ var through = require('through2')
 var protocol = require('dat-replication-protocol')
 var request = require('request')
 var pumpify = require('pumpify')
+var pump = require('pump')
 var util = require('util')
 
 var noop = function() {}
