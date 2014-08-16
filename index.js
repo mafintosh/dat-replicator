@@ -1,78 +1,55 @@
 var through = require('through2')
 var protocol = require('dat-replication-protocol')
-var pump = require('pump')
+var request = require('request')
+var pumpify = require('pumpify')
+var util = require('util')
 
 var noop = function() {}
 
-module.exports = function(db, store) {
+module.exports = function(dat) {
   var that = {}
+  var schema = dat.schema
+  var blobs = dat.blobs
 
-  var blobs = db.subset('blobs')
+  var decodeBlobs = function(buf) {
+    var blobs = schema.decode(buf, {blobsOnly:true})
+    return blobs ? blobs.blobs : null
+  }
 
   var diff = function(change, cb) {
-    var latest = JSON.parse(change.value.toString())
+    var latest = decodeBlobs(change.value)
+
     var from = change.from
 
-    if (!from) return cb(null, latest)
+    if (!latest) return cb(null, [])
 
-    blobs.get(key, {version:from, valueEncoding:'json'}, function(err, prev) {
-      if (err && err.notFound) return cb(null, latest)
+    var ondone = function(latest, prev) {
+      var result = []
+      var keys = Object.keys(latest)
+
+      for (var i = 0; i < keys.length; i++) {
+        if (!prev || !prev[keys[i]] || prev[keys[i]].hash !== latest[keys[i]].hash) result.push(latest[keys[i]])
+      }
+
+      cb(null, result)
+    }
+
+    if (!from) return ondone(latest, null)
+
+    dat.get(key, {version:from, blobsOnly:true}, function(err, prev) {
+      if (err && err.notFound) return ondone(latest, null)
       if (err) return cb(err)
 
-      latest = latest.filter(function(bl) {
-        for (var i = 0; i < prev.length; i++) {
-          if (prev[i].hash === bl.hash) return false
-        }
-        return true
-      })
-
-      cb(null, latest)
+      ondone(latest, decodeBlobs(prev))
     })
-  }
-
-  that.createPullStream = function(remote, opts) {
-    if (!opts) opts = {}
-
-    var rcvd = that.receive(opts)
-    var get = request(remote+'/api/changes', {
-      qs: {
-        blobs: opts.blobs !== false,
-        since: opts.since || 0,
-        type: 'binary'
-      }
-    })
-
-    return pump(get, rcvd)
-  }
-
-  that.createPushStream = function(remote, opts) {
-    if (!opts) opts = {}
-
-    var send = that.send(opts)
-    var post = request.post(remote+'/api/changes', {
-      qs: {
-        type: 'binary'
-      }
-    })
-
-    post.on('response', function(res) {
-      if (!/2\d\d/.test(res.statusCode)) return
-      res.resume()
-      res.on('end', function() {
-        send.destroy(new Error('Remote rejected push'))
-      })
-    })
-
-    pump(send, post)
-    return send
   }
 
   that.receive = function() {
     var decode = protocol.decode()
-    var changes = db.createChangesWriteStream({valueEncoding:'binary'})
+    var changes = dat.createChangesWriteStream()
 
     decode.blob(function(stream, cb) {
-      pump(stream, store.createWriteStream(), cb)
+      pump(stream, dat.blobs.createWriteStream(cb))
     })
 
     decode.change(function(change, cb) {
@@ -90,19 +67,19 @@ module.exports = function(db, store) {
     if (!opts) opts = {}
 
     var encode = protocol.encode()
-    var changes = db.createChangesReadStream({since:opts.since, valueEncoding:'binary', data:true})
+    var changes = dat.createChangesReadStream({since:opts.since, data:true})
     var flushed = false
 
     var onchange = function(change, enc, cb) {
-      if (opts.blobs === false || change.subset !== 'blobs') return encode.change(change, cb)
-
+      if (opts.blobs === false || change.subset) return encode.change(change, cb)
       diff(change, function(err, blobs) {
         if (err) return cb(err)
 
         var loop = function() {
           if (!blobs.length) return encode.change(change, cb)
           var next = blobs.shift()
-          pump(store.createReadStream(next.hash), encode.blob(next.size, loop))
+          if (!next.size) throw new Error('blobs need .size to replicate')
+          pump(dat.blobs.createReadStream(next), encode.blob(next.size, loop))
         }
 
         loop()
@@ -121,6 +98,63 @@ module.exports = function(db, store) {
 
     return encode
   }
+
+  that.createPullStream = function(remote, opts) {
+    if (!opts) opts = {}
+
+    var pull = pumpify()
+
+    // request api to ping the remote
+    request(remote+'/api', function(err) {
+      if (err) return pull.destroy(err)
+      if (pull.destroyed) return
+
+      var rcvd = that.receive(opts)
+      var get = request(remote+'/api/pull', {
+        qs: {
+          blobs: opts.blobs !== false,
+          since: opts.since || dat.storage.change || 0
+        }
+      })
+
+      pull.stats = rcvd
+      pull.setPipeline(get, rcvd)
+    })
+
+    pull.resume()
+    return pull
+  }
+
+  that.createPushStream = function(remote, opts) {
+    if (!opts) opts = {}
+
+    var push = pumpify()
+
+    request(remote+'/api', {json:true}, function(err, res) {
+      if (err) return push.destroy(err)
+      if (push.destroyed) return
+
+      opts.since = res.body.changes
+
+      var send = that.send(opts)
+      var post = request.post(remote+'/api/push')
+
+      post.on('response', function(res) {
+        res.resume()
+        res.on('end', function() {
+          if (/2\d\d/.test(res.statusCode)) return
+          send.destroy(new Error('Remote rejected push'))
+        })
+      })
+
+      push.stats = send
+      push.setPipeline(send, post)
+    })
+
+    push.resume()
+    return push
+  }
+
 
   return that
 }
