@@ -113,6 +113,7 @@ module.exports = function(dat) {
       var rcvd = that.receive(opts)
       var get = request(remote+'/api/pull', {
         qs: {
+          live: opts.live,
           blobs: opts.blobs !== false,
           since: opts.since || dat.storage.change || 0
         }
