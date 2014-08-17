@@ -3,7 +3,7 @@ var protocol = require('dat-replication-protocol')
 var request = require('request')
 var pumpify = require('pumpify')
 var pump = require('pump')
-var util = require('util')
+var zlib = require('zlib')
 
 var noop = function() {}
 
@@ -112,6 +112,9 @@ module.exports = function(dat) {
 
       var rcvd = that.receive(opts)
       var get = request(remote+'/api/pull', {
+        headers: {
+          'accept-encoding': 'gzip'
+        },
         qs: {
           live: opts.live,
           blobs: opts.blobs !== false,
@@ -119,8 +122,20 @@ module.exports = function(dat) {
         }
       })
 
-      pull.stats = rcvd
-      pull.setPipeline(get, rcvd)
+      var onerror = function(err) {
+        pull.destroy(err)
+      }
+
+      var gunzip = function(res) {
+        return res.headers['content-encoding'] === 'gzip' ? zlib.createGunzip() : through()
+      }
+
+      get.on('error', onerror)
+      get.on('response', function(res) {
+        get.removeListener('error', onerror)
+        pull.stats = rcvd
+        pull.setPipeline(get, gunzip(res), rcvd)
+      })
     })
 
     pull.resume()
@@ -139,7 +154,9 @@ module.exports = function(dat) {
       opts.since = res.body.changes
 
       var send = that.send(opts)
-      var post = request.post(remote+'/api/push')
+      var post = request.post(remote+'/api/push', {
+        headers: {'content-encoding':'gzip'}
+      })
 
       post.on('response', function(res) {
         res.resume()
@@ -150,7 +167,7 @@ module.exports = function(dat) {
       })
 
       push.stats = send
-      push.setPipeline(send, post)
+      push.setPipeline(send, zlib.createGzip(), post)
     })
 
     push.resume()
