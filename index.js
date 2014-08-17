@@ -41,7 +41,7 @@ module.exports = function(dat) {
       if (err && err.notFound) return ondone(latest, null)
       if (err) return cb(err)
 
-      ondone(latest, decodeBlobs(prev))
+      ondone(latest, prev)
     })
   }
 
