@@ -37,7 +37,7 @@ module.exports = function(dat) {
 
     if (!from) return ondone(latest, null)
 
-    dat.get(key, {version:from, blobsOnly:true}, function(err, prev) {
+    dat.get(change.key, {version:from, blobsOnly:true}, function(err, prev) {
       if (err && err.notFound) return ondone(latest, null)
       if (err) return cb(err)
 
