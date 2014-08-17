@@ -68,7 +68,7 @@ module.exports = function(dat) {
     if (!opts) opts = {}
 
     var encode = protocol.encode()
-    var changes = dat.createChangesReadStream({since:opts.since, data:true})
+    var changes = dat.createChangesReadStream({since:opts.since, data:true, live:opts.live})
     var flushed = false
 
     var onchange = function(change, enc, cb) {
