@@ -113,7 +113,7 @@ module.exports = function(dat) {
       var rcvd = that.receive(opts)
       var get = request(remote+'/api/pull', {
         headers: {
-          'accept-encoding': 'gzip'
+          'accept-encoding': opts.live ? '' : 'gzip'
         },
         qs: {
           live: opts.live,
