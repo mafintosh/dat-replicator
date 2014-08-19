@@ -7,6 +7,10 @@ var zlib = require('zlib')
 
 var noop = function() {}
 
+var getKey = function(b) {
+  return b.key || b.hash
+}
+
 module.exports = function(dat) {
   var that = {}
   var schema = dat.schema
@@ -29,7 +33,7 @@ module.exports = function(dat) {
       var keys = Object.keys(latest)
 
       for (var i = 0; i < keys.length; i++) {
-        if (!prev || !prev[keys[i]] || prev[keys[i]].hash !== latest[keys[i]].hash) result.push(latest[keys[i]])
+        if (!prev || !prev[keys[i]] || getKey(prev[keys[i]]) !== getKey(latest[keys[i]])) result.push(latest[keys[i]])
       }
 
       cb(null, result)
