@@ -110,8 +110,9 @@ module.exports = function(dat) {
     var pull = pumpify()
 
     // request api to ping the remote
-    request(remote+'/api', function(err) {
+    request(remote+'/api', {json:true}, function(err, res) {
       if (err) return pull.destroy(err)
+      if (res.statusCode !== 200 || typeof res.body.changes !== 'number') return pull.destroy(new Error('Invalid remote'))
       if (pull.destroyed) return
 
       var rcvd = that.receive(opts)
@@ -153,6 +154,7 @@ module.exports = function(dat) {
 
     request(remote+'/api', {json:true}, function(err, res) {
       if (err) return push.destroy(err)
+      if (res.statusCode !== 200 || typeof res.body.changes !== 'number') return push.destroy(new Error('Invalid remote'))
       if (push.destroyed) return
 
       opts.since = res.body.changes
