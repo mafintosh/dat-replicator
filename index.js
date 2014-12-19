@@ -111,7 +111,10 @@ module.exports = function(dat) {
 
     // request api to ping the remote
     request(remote+'/api', {json:true}, function(err, res) {
-      if (err) return pull.destroy(err)
+      if (err) {
+        if (err.code == 'ENOTFOUND') return pull.destroy(new Error('Could not find a dat there. Are you sure the URL is right?'))
+        else return pull.destroy(err)
+      }
       if (res.statusCode !== 200 || typeof res.body.changes !== 'number') return pull.destroy(new Error('Invalid remote'))
       if (pull.destroyed) return
 
