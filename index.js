@@ -166,19 +166,20 @@ module.exports = function(dat) {
       var post = request.post(remote+'/api/push', {
         headers: {'content-encoding':'gzip'}
       })
-
       post.on('response', function(res) {
         res.resume()
-        res.on('end', function() {
-          if (/2\d\d/.test(res.statusCode)) return
-          send.destroy(new Error('Remote rejected push'))
-        })
+        if (/2\d\d/.test(res.statusCode)) return
+        if (res.statusCode == 401) {
+          var url = require('url')
+          var remoteSuggestion =  'http://username:password@' + url.parse(remote).host
+          push.destroy(new Error('Unauthorized. Did you try this? \n\n  dat push ' + remoteSuggestion + '\n'))
+        }
+        push.destroy(new Error('Remote rejected push'))
       })
 
       push.stats = send
       push.setPipeline(send, zlib.createGzip(), post)
     })
-
     push.resume()
     return push
   }
