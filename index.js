@@ -4,6 +4,7 @@ var request = require('request')
 var pumpify = require('pumpify')
 var pump = require('pump')
 var zlib = require('zlib')
+var url = require('url')
 
 var noop = function() {}
 
@@ -168,13 +169,16 @@ module.exports = function(dat) {
       })
       post.on('response', function(res) {
         res.resume()
-        if (/2\d\d/.test(res.statusCode)) return
-        if (res.statusCode == 401) {
-          var url = require('url')
-          var remoteSuggestion =  'http://username:password@' + url.parse(remote).host
-          push.destroy(new Error('Unauthorized. Did you try this? \n\n  dat push ' + remoteSuggestion + '\n'))
-        }
-        push.destroy(new Error('Remote rejected push'))
+        res.on('end', function() {
+          if (/2\d\d/.test(res.statusCode)) return
+          if (res.statusCode == 401) {
+            var p = url.parse(remote)
+            var remoteSuggestion =  p.protocol + '//username:password@' + p.host
+            push.destroy(new Error('Unauthorized. Did you try this? \n\n  dat push ' + remoteSuggestion + '\n'))
+            return
+          }
+          push.destroy(new Error('Remote rejected push'))
+        })
       })
 
       push.stats = send
